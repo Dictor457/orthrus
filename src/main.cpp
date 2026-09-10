@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 #include <string>
+#include <iomanip>
 #include <gmpxx.h>
 
 struct Quat {
@@ -92,7 +93,105 @@ public:
     }
 };
 
+class ParameterGenerator {
+public:
+    // Генерация случайного простого p = 3 mod 4 заданной битности
+    static mpz_class generate_prime_3mod4(unsigned int bits, gmp_randclass& rng) {
+        mpz_class p;
+        while (true) {
+            p = rng.get_z_bits(bits);
+            p |= (mpz_class(1) << (bits - 1)); // старший бит
+            p |= 3; // гарантируем нечетность и младшие биты
+            if (p % 4 != 3) p += 2;
+            while (p % 4 != 3 || mpz_probab_prime_p(p.get_mpz_t(), 25) == 0) {
+                p += 4;
+            }
+            if (mpz_sizeinbase(p.get_mpz_t(), 2) == bits) return p;
+        }
+    }
+};
+
+class KLPTCore {
+public:
+    // Полноценный RepresentInteger для любого размера M > p вплоть до 256/512 бит
+    static std::optional<Quat> represent_integer(const mpz_class& M, const mpz_class& p, gmp_randclass& rng, unsigned long max_trials = 200000) {
+        if (M <= p) return std::nullopt;
+        mpz_class ratio = M / p;
+        mpz_class bound;
+        mpz_sqrt(bound.get_mpz_t(), ratio.get_mpz_t());
+        if (bound < 2) bound = 2;
+
+        for (unsigned long iter = 0; iter < max_trials; ++iter) {
+            mpz_class z = rng.get_z_range(bound);
+            mpz_class w = rng.get_z_range(bound);
+
+            mpz_class p_part = p * (z * z + w * w);
+            if (p_part >= M) continue;
+
+            mpz_class M_prime = M - p_part;
+            if (M_prime % 4 != 1) continue;
+            if (mpz_probab_prime_p(M_prime.get_mpz_t(), 15) == 0) continue;
+
+            auto xy = Cornacchia::solve(mpz_class(1), M_prime);
+            if (!xy.has_value()) continue;
+
+            auto [x, y] = *xy;
+            Quat q{x, y, z, w};
+            if (q.norm(p) == M) return q;
+        }
+        return std::nullopt;
+    }
+};
+
+void run_benchmark() {
+    std::cout << "================================================================================\n";
+    std::cout << "           SQISign KLPT-Engine: Scalability & Benchmark Suite                   \n";
+    std::cout << "================================================================================\n";
+    std::cout << std::left << std::setw(12) << "Security" 
+              << std::setw(16) << "Prime p (bits)" 
+              << std::setw(20) << "Target M (bits)" 
+              << std::setw(18) << "Time (ms)" 
+              << "Status" << "\n";
+    std::cout << "--------------------------------------------------------------------------------\n";
+
+    gmp_randclass rng(gmp_randinit_default);
+    rng.seed(1337);
+
+    std::vector<unsigned int> bit_sizes = {32, 64, 128, 256};
+
+    for (unsigned int bits : bit_sizes) {
+        mpz_class p = ParameterGenerator::generate_prime_3mod4(bits, rng);
+        // В SQISign целевая норма M берется кратно больше характеристики p
+        mpz_class M = p * (mpz_class(1) << 32) + 1;
+        while (M % 4 != 1 || mpz_probab_prime_p(M.get_mpz_t(), 20) == 0) M += 2;
+
+        auto t_start = std::chrono::high_resolution_clock::now();
+        auto sol = KLPTCore::represent_integer(M, p, rng);
+        auto t_end = std::chrono::high_resolution_clock::now();
+        double ms = std::chrono::duration<double, std::milli>(t_end - t_start).count();
+
+        std::string sec_level = (bits == 256) ? "NIST-1 (PQC)" : (bits == 128 ? "Mid-Level" : "Toy-Level");
+
+        std::cout << std::left << std::setw(12) << sec_level
+                  << std::setw(16) << bits 
+                  << std::setw(20) << mpz_sizeinbase(M.get_mpz_t(), 2) 
+                  << std::setw(18) << std::fixed << std::setprecision(3) << ms;
+
+        if (sol.has_value() && sol->norm(p) == M) {
+            std::cout << "[VERIFIED]" << "\n";
+        } else {
+            std::cout << "[FAILED]" << "\n";
+        }
+    }
+    std::cout << "================================================================================\n";
+}
+
 int main(int argc, char* argv[]) {
+    if (argc >= 2 && std::string(argv[1]) == "--benchmark") {
+        run_benchmark();
+        return 0;
+    }
+
     mpz_class p("431");
     mpz_class N("97");
     unsigned int e = 32;
