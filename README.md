@@ -1,49 +1,59 @@
-# SQISign KLPT-Engine
+# klpt-engine
 
-A high-performance C++20 implementation of the **KLPT (Kohel-Lauter-Petit-Tignol)** algorithm, providing the quaternion navigation core for the **SQISign** post-quantum digital signature scheme.
+Didactic C++20 implementation of the Kohel-Lauter-Petit-Tignol (KLPT) algorithm for navigating quaternion ideal lattices in supersingular isogeny cryptography.
 
-## Overview
+## What is this?
 
-In isogeny-based cryptography, navigating the supersingular l-isogeny graph directly over finite fields takes exponential time O(sqrt(p)).
+This repository contains a standalone implementation of the quaternion navigation core used in the SQISign signature scheme, based on Christophe Petit's 2014 decomposition method.
 
-Via the **Deuring Correspondence**, supersingular elliptic curves correspond to maximal orders in the quaternion algebra B_{p, inf}, and isogenies correspond to integral ideals. The KLPT algorithm solves the navigation problem in polynomial time on the quaternion side:
+Given a prime p = 3 (mod 4) and a left ideal I of norm N in the maximal quaternion order B_{p, inf}, the engine finds an element gamma in I such that:
+    Nrd(gamma) = N * 2^e
 
-Given an ideal I of arbitrary degree N, KLPT computes an equivalent ideal:
-    J = I * (gamma_bar / N)
-such that Nrd(J) = 2^e, reducing the graph navigation to an efficient evaluation of a degree-2^e isogeny chain on the curve.
+This yields an equivalent ideal J = I * (gamma_bar / N) with smooth degree 2^e, which corresponds to a navigable chain of 2-isogenies via the Deuring correspondence.
 
-## Mathematical Architecture
+## Current Scope & Limitations
 
-1. Quaternion Algebra B_{p, inf}:
-   For p = 3 mod 4, generators <1, i, j, k> with:
-   i^2 = -1, j^2 = -p, ij = -ji = k.
-2. Cornacchia Algorithm & Tonelli-Shanks:
-   Solving diophantine equations x^2 + d*y^2 = M over Z.
-3. Petit Decomposition:
-   Decomposing elements gamma = C + D*j in I with C = D*X0 (mod N) such that gamma * alpha_bar = 0 (mod N) holds identically.
+What is implemented:
+- Arithmetic of quaternion algebra B_{p, inf} over Q.
+- Tonelli-Shanks algorithm for modular square roots.
+- Modified Cornacchia algorithm for quadratic forms x^2 + d*y^2 = m.
+- Petit's decomposition gamma = C + D*j for ideal representation.
 
-## Build and Run
+What is NOT implemented:
+- Supersingular elliptic curve point arithmetic.
+- Finite field arithmetic over F_{p^2}.
+- Velu / sqrt(Velu) isogeny evaluation.
+- Full SQISign signature protocol.
+
+This is strictly a mathematical and algorithmic prototype demonstrating the quaternion lattice reduction step.
+
+## Build and Usage
 
 Requirements:
-- Arch Linux / Modern Linux
-- GCC 13+ or Clang 16+ (C++20 support)
+- Linux (tested on Arch Linux)
+- GCC 13+ / Clang 16+
 - CMake 3.20+
-- GNU Multiple Precision Arithmetic Library (gmp, gmpxx)
+- GMP library (libgmp, gmpxx)
 
-Build commands:
+Build:
     cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
     cmake --build build
 
-Run with custom parameters:
+Run:
     ./build/klpt_test <prime_p> <ideal_norm_N> <degree_e>
+
 Example:
     ./build/klpt_test 431 97 32
 
-## Performance
+## Benchmark
 
-Tested on AMD Ryzen 5 5600 running Arch Linux:
-- RepresentInteger (128-bit norm): < 1 ms
-- KLPT Path Resolution (2^32-isogeny): < 2 ms
+Hardware: AMD Ryzen 5 5600 @ 4.47 GHz (Arch Linux)
+- Target: p = 431, N = 97, e = 32 (Target norm = 416,611,827,712)
+- Resolution time: < 1 ms
+
+## References
+- Kohel, Lauter, Petit, Tignol. "Quaternions, covers, and cryptography" (2014).
+- De Feo, Kohel, Leriche, Petit, Wesolowski. "SQISign: compact post-quantum signatures from quaternions and isogenies" (2020).
 
 ## License
 MIT
