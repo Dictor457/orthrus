@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: orthrus
+Description: High-Assurance KLPT Quaternion Navigation Core for SQISign
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -lorthrus -lgmpxx -lgmp
+Cflags: -I${includedir}

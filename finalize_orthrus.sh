@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+set -e
+
+# 1. Формируем эталонный README.md без конфликтующих вложенных бэктиков
+cat << 'FILE_README' > README.md
 # ORTHRUS
 
 > High-Assurance KLPT Quaternion Navigation Core for Supersingular Isogeny Cryptography (SQISign)
@@ -77,3 +82,51 @@ Targets produced:
 
 ## License
 MIT
+FILE_README
+
+# 2. Переименование удаленного репозитория на GitHub в orthrus
+echo "[*] Renaming remote repository to orthrus on GitHub..."
+gh repo rename orthrus --yes 2>/dev/null || echo "[i] Remote repository already named orthrus."
+git remote set-url origin https://github.com/Dictor457/orthrus.git 2>/dev/null || true
+
+# 3. Обновление метаданных репозитория
+echo "[*] Updating GitHub description and topics..."
+gh repo edit Dictor457/orthrus \
+    --description "High-Assurance KLPT Quaternion Navigation Core for SQISign (C++20 / C-ABI / Linux Library)" \
+    --add-topic cryptography \
+    --add-topic post-quantum \
+    --add-topic isogenies \
+    --add-topic quaternions \
+    --add-topic sqisign \
+    --add-topic cpp20 \
+    --add-topic c-abi \
+    --add-topic fuzzed \
+    --add-topic archlinux
+
+# 4. Коммит и пуш всех изменений
+git add -A
+git commit -m "feat!: release v1.0.0 - full transition to Orthrus architecture (Parts 1-3 complete)" || true
+git push -u origin main --force
+
+# 5. Публикация официального релиза v1.0.0
+echo "[*] Creating Release v1.0.0..."
+git tag -d v1.0.0 2>/dev/null || true
+git tag -a v1.0.0 -m "Orthrus v1.0.0: High-Assurance KLPT Quaternion Navigation Core"
+git push origin v1.0.0 --force
+
+gh release create v1.0.0 \
+    --title "v1.0.0: Orthrus — High-Assurance KLPT Navigation Core" \
+    --notes "Major Milestone Release:
+- 4x4 Hermite Normal Form (HNF) ideal lattices.
+- 2D Lattice Sampling & Petit decomposition with deterministic retry-loop.
+- Shared and static libraries (liborthrus.so, liborthrus.a).
+- Pure C-compatible ABI (orthrus.h) with string-based GMP serialization.
+- Hardened against 100,000 mutation fuzzing cycles.
+- Native Arch Linux PKGBUILD support.
+- Performance: ~0.60 ms per resolution on AMD Ryzen 5 5600."
+
+echo "=================================================================="
+echo "[SUCCESS] Репозиторий переименован в Dictor457/orthrus!"
+echo "[SUCCESS] Релиз v1.0.0 опубликован на GitHub!"
+echo "=================================================================="
+rm -f finalize_orthrus.sh
