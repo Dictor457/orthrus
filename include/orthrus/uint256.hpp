@@ -91,12 +91,12 @@ struct alignas(32) uint256 {
     // Умножение 256x256 -> 256 на базе 128-битных перекрестных произведений (MULX)
     [[nodiscard]] uint256 operator*(const uint256& b) const {
         uint256 r;
-        unsigned __int128 carry = 0;
+        __extension__ unsigned __int128 carry = 0;
         for (size_t i = 0; i < 4; ++i) {
             carry = 0;
             for (size_t j = 0; i + j < 4; ++j) {
-                unsigned __int128 cur = (unsigned __int128)r.limbs[i + j] +
-                                       (unsigned __int128)limbs[i] * (unsigned __int128)b.limbs[j] + carry;
+                __extension__ unsigned __int128 cur = (__extension__ unsigned __int128)r.limbs[i + j] +
+                                       (__extension__ unsigned __int128)limbs[i] * (__extension__ unsigned __int128)b.limbs[j] + carry;
                 r.limbs[i + j] = (uint64_t)cur;
                 carry = cur >> 64;
             }
